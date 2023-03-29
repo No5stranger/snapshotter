@@ -8,6 +8,8 @@ import (
 	"google.golang.org/grpc"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 var (
@@ -32,6 +34,15 @@ func main() {
 		fmt.Printf("OpenSocket error: %s", err)
 		os.Exit(1)
 	}
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		os.Remove(snapshotterSocketPath)
+		os.Exit(0)
+	}()
+
 	if err := rpc.Serve(sock); err != nil {
 		fmt.Printf("GRPC Server error: %s", err)
 		os.Exit(1)
