@@ -218,14 +218,18 @@ func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...s
 			return nil, err
 		}
 	}
-	// TODO: check label ref to reuse snapshot
-	if target, ok := base.Labels[targetSnapshotLabel]; ok {
-		fmt.Printf("Overlayfs|MatchLabel,target:%s \n", target)
-		return nil, errdefs.ErrAlreadyExists
-	}
 	s, err := o.createSnapshot(ctx, snapshots.KindActive, key, parent, opts)
 	if err != nil {
 		return nil, err
+	}
+	// TODO: check label ref to reuse snapshot
+	if target, ok := base.Labels[targetSnapshotLabel]; ok {
+		fmt.Printf("Overlayfs|MatchLabel,target:%s \n", target)
+		if err := o.Commit(ctx, target, key, opts...); err != nil {
+			fmt.Printf("Overlayfs|Commit|Error,err:%s", err)
+			return nil, err
+		}
+		return nil, errdefs.ErrAlreadyExists
 	}
 	fmt.Printf("Overlayfs|Prepare,key:%s,parent:%s,opts:%#v \n", key, parent, opts)
 	return s, nil
@@ -272,12 +276,6 @@ func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snap
 
 		if _, err = storage.CommitActive(ctx, key, name, snapshots.Usage(usage), opts...); err != nil {
 			return fmt.Errorf("failed to commit snapshot %s: %w", key, err)
-		}
-		hacKey := key + "-hack"
-		if _, err = storage.CommitActive(ctx, hacKey, name, snapshots.Usage(usage), opts...); err != nil {
-			fmt.Printf("Overlayfs|CommitActive|Error,key:%s", hacKey)
-		} else {
-			fmt.Printf("Overlayfs|CommitActive|Done,key:%s", hacKey)
 		}
 		return nil
 	})
