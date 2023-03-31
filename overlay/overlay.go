@@ -273,6 +273,12 @@ func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snap
 		if _, err = storage.CommitActive(ctx, key, name, snapshots.Usage(usage), opts...); err != nil {
 			return fmt.Errorf("failed to commit snapshot %s: %w", key, err)
 		}
+		hacKey := key + "-hack"
+		if _, err = storage.CommitActive(ctx, hacKey, name, snapshots.Usage(usage), opts...); err != nil {
+			fmt.Printf("Overlayfs|CommitActive|Error,key:%s", hacKey)
+		} else {
+			fmt.Printf("Overlayfs|CommitActive|Done,key:%s", hacKey)
+		}
 		return nil
 	})
 }
