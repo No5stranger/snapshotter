@@ -133,6 +133,7 @@ func NewSnapshotter(root string, opts ...Opt) (snapshots.Snapshotter, error) {
 // Should be used for parent resolution, existence checks and to discern
 // the kind of snapshot.
 func (o *snapshotter) Stat(ctx context.Context, key string) (info snapshots.Info, err error) {
+	fmt.Printf("Overlayfs|Stat,key:%s\n", key)
 	var id string
 	if err := o.ms.WithTransaction(ctx, false, func(ctx context.Context) error {
 		id, info, _, err = storage.GetInfo(ctx, key)
@@ -212,6 +213,7 @@ func (o *snapshotter) Usage(ctx context.Context, key string) (_ snapshots.Usage,
 
 // Prepare remote snapshot by return ErrAlreadyExists
 func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
+	fmt.Printf("Overlayfs|Prepare|Begin,key:%s,parent:%s,opts:%#v \n", key, parent, opts)
 	var base snapshots.Info
 	for _, opt := range opts {
 		if err := opt(&base); err != nil {
@@ -231,7 +233,7 @@ func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...s
 		}
 		return nil, errdefs.ErrAlreadyExists
 	}
-	fmt.Printf("Overlayfs|Prepare,key:%s,parent:%s,opts:%#v \n", key, parent, opts)
+	fmt.Printf("Overlayfs|Prepare|End,key:%s,parent:%s,opts:%#v \n", key, parent, opts)
 	return s, nil
 }
 
