@@ -14,7 +14,7 @@ import (
 
 var (
 	snapshotterSocketPath = "/run/containerd/a-overlayfs"
-	overlayfsRootPath     = "/var/lib/containerd/a-overlayfs/"
+	overlayfsRootPath     = "/var/lib/containerd/b-overlayfs/"
 )
 
 func main() {

@@ -212,7 +212,7 @@ func (o *snapshotter) Usage(ctx context.Context, key string) (_ snapshots.Usage,
 }
 
 // Prepare remote snapshot by return ErrAlreadyExists
-func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
+func (o *snapshotter) PrepareBAK(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
 	fmt.Printf("Overlayfs|Prepare|Begin,key:%s,parent:%s,opts:%#v \n", key, parent, opts)
 	var base snapshots.Info
 	for _, opt := range opts {
@@ -237,7 +237,7 @@ func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...s
 	return s, nil
 }
 
-func (o *snapshotter) PrepareBAK(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
+func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
 	return o.createSnapshot(ctx, snapshots.KindActive, key, parent, opts)
 }
 
