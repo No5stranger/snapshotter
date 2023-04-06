@@ -4,7 +4,7 @@ import (
 	"fmt"
 	snapshotsapi "github.com/containerd/containerd/api/services/snapshots/v1"
 	"github.com/containerd/containerd/contrib/snapshotservice"
-	"github.com/no5stranger/snapshotter/overlay"
+	"github.com/containerd/containerd/snapshots/overlay"
 	"google.golang.org/grpc"
 	"net"
 	"os"
