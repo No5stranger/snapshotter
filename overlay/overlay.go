@@ -26,8 +26,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/containerd/containerd/errdefs"
-
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/snapshots"
@@ -35,10 +33,6 @@ import (
 	"github.com/containerd/continuity/fs"
 	"github.com/no5stranger/snapshotter/overlay/overlayutils"
 	"github.com/sirupsen/logrus"
-)
-
-const (
-	targetSnapshotLabel = "containerd.io/snapshot.ref"
 )
 
 // upperdirKey is a key of an optional label to each snapshot.
@@ -133,7 +127,6 @@ func NewSnapshotter(root string, opts ...Opt) (snapshots.Snapshotter, error) {
 // Should be used for parent resolution, existence checks and to discern
 // the kind of snapshot.
 func (o *snapshotter) Stat(ctx context.Context, key string) (info snapshots.Info, err error) {
-	fmt.Printf("Overlayfs|Stat,key:%s\n", key)
 	var id string
 	if err := o.ms.WithTransaction(ctx, false, func(ctx context.Context) error {
 		id, info, _, err = storage.GetInfo(ctx, key)
@@ -150,13 +143,6 @@ func (o *snapshotter) Stat(ctx context.Context, key string) (info snapshots.Info
 	}
 	return info, nil
 }
-
-/**
-func (o *snapshotter) Stat(ctx context.Context, key string) (info snapshots.Info, err error) {
-	fmt.Printf("Overlayfs|Stat,key:%s", key)
-	return info, nil
-}
-*/
 
 func (o *snapshotter) Update(ctx context.Context, info snapshots.Info, fieldpaths ...string) (newInfo snapshots.Info, err error) {
 	err = o.ms.WithTransaction(ctx, true, func(ctx context.Context) error {
@@ -211,41 +197,7 @@ func (o *snapshotter) Usage(ctx context.Context, key string) (_ snapshots.Usage,
 	return usage, nil
 }
 
-// Prepare remote snapshot by return ErrAlreadyExists
-func (o *snapshotter) PrepareBAK(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
-	fmt.Printf("Overlayfs|Prepare|Begin,key:%s,parent:%s,opts:%#v \n", key, parent, opts)
-	var base snapshots.Info
-	for _, opt := range opts {
-		if err := opt(&base); err != nil {
-			return nil, err
-		}
-	}
-	s, err := o.createSnapshot(ctx, snapshots.KindActive, key, parent, opts)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: check label ref to reuse snapshot
-	if target, ok := base.Labels[targetSnapshotLabel]; ok {
-		fmt.Printf("Overlayfs|MatchLabel,target:%s \n", target)
-		if err := o.Commit(ctx, target, key, opts...); err != nil {
-			fmt.Printf("Overlayfs|Commit|Error,err:%s", err)
-			return nil, err
-		}
-		return nil, errdefs.ErrAlreadyExists
-	}
-	fmt.Printf("Overlayfs|Prepare|End,key:%s,parent:%s,opts:%#v \n", key, parent, opts)
-	return s, nil
-}
-
 func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
-	var base snapshots.Info
-	for _, opt := range opts {
-		if err := opt(&base); err != nil {
-			return nil, err
-		}
-	}
-	target := base.Labels[targetSnapshotLabel]
-	fmt.Printf("Overlayfs|Prepare,key:%s,parent:%s,target:%s,opts:%#v \n", key, parent, target, opts)
 	return o.createSnapshot(ctx, snapshots.KindActive, key, parent, opts)
 }
 
