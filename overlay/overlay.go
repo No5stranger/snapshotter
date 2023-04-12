@@ -222,7 +222,7 @@ func (o *snapshotter) View(ctx context.Context, key, parent string, opts ...snap
 //
 // This can be used to recover mounts after calling View or Prepare.
 func (o *snapshotter) Mounts(ctx context.Context, key string) (_ []mount.Mount, err error) {
-	fmt.Printf("Overlayfs|Mounts,key:%s", key)
+	fmt.Printf("Overlayfs|Mounts,key:%s\n", key)
 	var s storage.Snapshot
 	if err := o.ms.WithTransaction(ctx, false, func(ctx context.Context) error {
 		s, err = storage.GetSnapshot(ctx, key)
@@ -237,7 +237,7 @@ func (o *snapshotter) Mounts(ctx context.Context, key string) (_ []mount.Mount, 
 }
 
 func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snapshots.Opt) error {
-	fmt.Printf("Overlayfs|Commit,name:%s,key:%s", name, key)
+	fmt.Printf("Overlayfs|Commit,name:%s,key:%s\n", name, key)
 	return o.ms.WithTransaction(ctx, true, func(ctx context.Context) error {
 		// grab the existing id
 		id, _, _, err := storage.GetInfo(ctx, key)
@@ -261,7 +261,7 @@ func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snap
 // immediately become unavailable and unrecoverable. Disk space will
 // be freed up on the next call to `Cleanup`.
 func (o *snapshotter) Remove(ctx context.Context, key string) (err error) {
-	fmt.Printf("Overlayfs|Remove,key:%s", key)
+	fmt.Printf("Overlayfs|Remove,key:%s\n", key)
 	var removals []string
 	// Remove directories after the transaction is closed, failures must not
 	// return error since the transaction is committed with the removal
@@ -293,7 +293,7 @@ func (o *snapshotter) Remove(ctx context.Context, key string) (err error) {
 
 // Walk the snapshots.
 func (o *snapshotter) Walk(ctx context.Context, fn snapshots.WalkFunc, fs ...string) error {
-	fmt.Printf("Overlayfs|Walk,fs:%v", fs)
+	fmt.Printf("Overlayfs|Walk,fs:%v\n", fs)
 	return o.ms.WithTransaction(ctx, false, func(ctx context.Context) error {
 		if o.upperdirLabel {
 			return storage.WalkInfo(ctx, func(ctx context.Context, info snapshots.Info) error {
@@ -314,7 +314,7 @@ func (o *snapshotter) Walk(ctx context.Context, fn snapshots.WalkFunc, fs ...str
 
 // Cleanup cleans up disk resources from removed or abandoned snapshots
 func (o *snapshotter) Cleanup(ctx context.Context) error {
-	fmt.Printf("Overlayfs|Cleanup")
+	fmt.Printf("Overlayfs|Cleanup\n")
 	cleanup, err := o.cleanupDirectories(ctx)
 	if err != nil {
 		return err
