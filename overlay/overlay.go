@@ -238,7 +238,14 @@ func (o *snapshotter) PrepareBAK(ctx context.Context, key, parent string, opts .
 }
 
 func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
-	fmt.Printf("Overlayfs|Prepare,key:%s,parent:%s,opts:%#v \n", key, parent, opts)
+	var base snapshots.Info
+	for _, opt := range opts {
+		if err := opt(&base); err != nil {
+			return nil, err
+		}
+	}
+	target := base.Labels[targetSnapshotLabel]
+	fmt.Printf("Overlayfs|Prepare,key:%s,parent:%s,target:%s,opts:%#v \n", key, parent, target, opts)
 	return o.createSnapshot(ctx, snapshots.KindActive, key, parent, opts)
 }
 
