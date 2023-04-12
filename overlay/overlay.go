@@ -134,6 +134,7 @@ func (o *snapshotter) Stat(ctx context.Context, key string) (info snapshots.Info
 	}); err != nil {
 		return info, err
 	}
+	fmt.Printf("Overlayfs|Stat,key:%s,id:%s\n", key, id)
 
 	if o.upperdirLabel {
 		if info.Labels == nil {
@@ -198,6 +199,14 @@ func (o *snapshotter) Usage(ctx context.Context, key string) (_ snapshots.Usage,
 }
 
 func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
+	var base snapshots.Info
+	for _, opt := range opts {
+		if err := opt(&base); err != nil {
+			return nil, err
+		}
+	}
+	target := base.Labels["containerd.io/snapshot.ref"]
+	fmt.Printf("Overlayfs|Prepare,key:%s,parent:%s,target:%s\n", key, parent, target)
 	return o.createSnapshot(ctx, snapshots.KindActive, key, parent, opts)
 }
 
