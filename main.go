@@ -2,19 +2,20 @@ package main
 
 import (
 	"fmt"
-	snapshotsapi "github.com/containerd/containerd/api/services/snapshots/v1"
-	"github.com/containerd/containerd/contrib/snapshotservice"
-	"github.com/containerd/containerd/snapshots/overlay"
-	"google.golang.org/grpc"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	snapshotsapi "github.com/containerd/containerd/api/services/snapshots/v1"
+	"github.com/containerd/containerd/contrib/snapshotservice"
+	"github.com/no5stranger/snapshotter/overlay"
+	"google.golang.org/grpc"
 )
 
 var (
 	snapshotterSocketPath = "/run/containerd/a-overlayfs"
-	overlayfsRootPath     = "/var/lib/containerd/b-overlayfs/"
+	overlayfsRootPath     = "/var/lib/containerd/a-overlayfs/"
 )
 
 func main() {
