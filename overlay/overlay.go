@@ -70,6 +70,7 @@ func WithUpperdirLabel(config *SnapshotterConfig) error {
 type snapshotter struct {
 	root          string
 	ms            *storage.MetaStore
+	rs            *RemoteSnapshot //remote snapshot
 	asyncRemove   bool
 	upperdirLabel bool
 	indexOff      bool
@@ -101,6 +102,10 @@ func NewSnapshotter(root string, opts ...Opt) (snapshots.Snapshotter, error) {
 	if err != nil {
 		return nil, err
 	}
+	rs, err := NewRemoteSnapshot()
+	if err != nil {
+		return nil, err
+	}
 
 	if err := os.Mkdir(filepath.Join(root, "snapshots"), 0700); err != nil && !os.IsExist(err) {
 		return nil, err
@@ -114,6 +119,7 @@ func NewSnapshotter(root string, opts ...Opt) (snapshots.Snapshotter, error) {
 	return &snapshotter{
 		root:          root,
 		ms:            ms,
+		rs:            rs,
 		asyncRemove:   config.asyncRemove,
 		upperdirLabel: config.upperdirLabel,
 		indexOff:      supportsIndex(),
@@ -134,7 +140,7 @@ func (o *snapshotter) Stat(ctx context.Context, key string) (info snapshots.Info
 	}); err != nil {
 		return info, err
 	}
-	fmt.Printf("Overlayfs|Stat,key:%s,id:%s\n", key, id)
+	fmt.Printf("Overlayfs|Stat,key:%s,id:%s,info:%#v\n", key, id, info)
 
 	if o.upperdirLabel {
 		if info.Labels == nil {
@@ -201,6 +207,10 @@ func (o *snapshotter) Usage(ctx context.Context, key string) (_ snapshots.Usage,
 }
 
 func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
+	return o.PrepareV2(ctx, key, parent, opts...)
+}
+
+func (o *snapshotter) PrepareBAK(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
 	var base snapshots.Info
 	for _, opt := range opts {
 		if err := opt(&base); err != nil {
@@ -233,7 +243,8 @@ func (o *snapshotter) Mounts(ctx context.Context, key string) (_ []mount.Mount, 
 	}); err != nil {
 		return nil, err
 	}
-	return o.mounts(s), nil
+	//return o.mounts(s), nil
+	return o.doMounts(ctx, s, key)
 }
 
 func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snapshots.Opt) error {
@@ -451,6 +462,7 @@ func (o *snapshotter) prepareDirectory(ctx context.Context, snapshotDir string, 
 }
 
 func (o *snapshotter) mounts(s storage.Snapshot) []mount.Mount {
+	fmt.Printf("Overlayfs|mounts,s:%#v\n", s)
 	if len(s.ParentIDs) == 0 {
 		// if we only have one layer/no parents then just return a bind mount as overlay
 		// will not work
