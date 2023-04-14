@@ -116,7 +116,7 @@ func (o *snapshotter) PrepareV2(ctx context.Context, key, parent string, opts ..
 			}
 
 		} else {
-			fmt.Printf("Overlayfs|PrepareV2|GetRemoteSnapshot,rs:%v,err:%v", rs, err)
+			fmt.Printf("Overlayfs|PrepareV2|GetRemoteSnapshot,rs:%v,err:%v\n", rs, err)
 		}
 	}
 	//return o.mounts(s), nil
@@ -223,7 +223,7 @@ func (o *snapshotter) doMounts(ctx context.Context, s storage.Snapshot, key stri
 		}, nil
 	}
 
-	fakeParentIDs := make([]string, 0, len(s.ParentIDs))
+	fakeParentPaths := make([]string, 0, len(s.ParentIDs))
 	if err := o.ms.WithTransaction(ctx, false, func(ctx context.Context) error {
 		for cKey := key; cKey != ""; {
 			id, info, _, err := storage.GetInfo(ctx, cKey)
@@ -232,7 +232,11 @@ func (o *snapshotter) doMounts(ctx context.Context, s storage.Snapshot, key stri
 				return err
 			}
 			if targetID, ok := info.Labels[remoteSnapshotLabel]; ok {
-				fakeParentIDs = append(fakeParentIDs, targetID)
+				if imc, ok := info.Labels[cacheSnapshotLabel]; ok {
+					fakeParentPaths = append(fakeParentPaths, o.fakeUpperPath(imc, targetID))
+				} else {
+					fmt.Printf("Overlayfs|doMounts|MissIMC,id:%v,info:%v\n", id, info)
+				}
 			}
 			cKey = info.Parent
 		}
@@ -257,10 +261,10 @@ func (o *snapshotter) doMounts(ctx context.Context, s storage.Snapshot, key stri
 			fmt.Sprintf("workdir=%s", o.workPath(s.ID)),
 			fmt.Sprintf("upperdir=%s", o.upperPath(s.ID)),
 		)
-	} else if len(fakeParentIDs) == 1 {
+	} else if len(fakeParentPaths) == 1 {
 		return []mount.Mount{
 			{
-				Source: o.fakeUpperPath(s.ParentIDs[0]),
+				Source: fakeParentPaths[0],
 				Type:   "bind",
 				Options: []string{
 					"ro",
@@ -282,9 +286,9 @@ func (o *snapshotter) doMounts(ctx context.Context, s storage.Snapshot, key stri
 	}
 
 	parentPaths := make([]string, len(s.ParentIDs))
-	if len(fakeParentIDs) > 0 {
-		for i := range fakeParentIDs {
-			parentPaths[i] = o.fakeUpperPath(fakeParentIDs[i])
+	if len(fakeParentPaths) > 0 {
+		for i := range fakeParentPaths {
+			parentPaths[i] = fakeParentPaths[i]
 		}
 
 	} else {
@@ -303,6 +307,6 @@ func (o *snapshotter) doMounts(ctx context.Context, s storage.Snapshot, key stri
 	}, nil
 }
 
-func (o *snapshotter) fakeUpperPath(id string) string {
-	return filepath.Join(remoteSnapshotRoot, "snapshots", id, "fs")
+func (o *snapshotter) fakeUpperPath(imc, id string) string {
+	return filepath.Join(remoteSnapshotRoot, imc, "snapshots", id, "fs")
 }
