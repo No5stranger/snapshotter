@@ -62,7 +62,7 @@ func (rs *RemoteSnapshot) Stat(ctx context.Context, key string) (id string, info
 
 func (rs *RemoteSnapshot) Check(ctx context.Context, target string) (id string, info snapshots.Info, err error) {
 	checkFunc := func(ctx context.Context, i snapshots.Info) error {
-		//fmt.Printf("Overlayfs|RemoteSnapshot|checkFunc,name:%s\n", i.Name)
+		fmt.Printf("Overlayfs|RemoteSnapshot|checkFunc,info:%v\n", i)
 		namePattern := strings.Split(i.Name, "/")
 		if len(namePattern) >= 3 && namePattern[2] == target {
 			id, info, _, err = storage.GetInfo(ctx, i.Name)
