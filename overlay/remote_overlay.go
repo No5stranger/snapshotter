@@ -2,6 +2,7 @@ package overlay
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
@@ -27,12 +28,24 @@ type RemoteSnapshot struct {
 	ms *storage.MetaStore
 }
 
-func NewRemoteSnapshot() (*RemoteSnapshot, error) {
-	ms, err := storage.NewMetaStore(filepath.Join(remoteSnapshotRoot, "metadata.db"))
+func NewRemoteSnapshot(dbfile string) (*RemoteSnapshot, error) {
+	ms, err := storage.NewMetaStore(dbfile)
 	if err != nil {
 		return nil, err
 	}
 	return &RemoteSnapshot{ms: ms}, nil
+}
+
+func GetRemoteSnapshot(labels map[string]string) (*RemoteSnapshot, error) {
+	imc, ok := labels[cacheSnapshotLabel]
+	if !ok || len(imc) == 0 {
+		return nil, nil
+	}
+	dbfile := filepath.Join(remoteSnapshotRoot, imc, "metadata.db")
+	if _, err := os.Stat(dbfile); errors.Is(err, os.ErrNotExist) {
+		return nil, os.ErrNotExist
+	}
+	return NewRemoteSnapshot(dbfile)
 }
 
 func (rs *RemoteSnapshot) Stat(ctx context.Context, key string) (id string, info snapshots.Info, err error) {
@@ -66,6 +79,11 @@ func (rs *RemoteSnapshot) Check(ctx context.Context, target string) (id string, 
 	return id, info, err
 }
 
+func (rs *RemoteSnapshot) Close(ctx context.Context) {
+	err := rs.ms.Close()
+	fmt.Printf("RemoteSnapshot|Close,err:%v", err)
+}
+
 func (o *snapshotter) PrepareV2(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
 	fmt.Printf("Overlayfs|PrepareV2,key:%s,parent:%s,opts:%d\n", key, parent, len(opts))
 	s, err := o.createSnapshotV2(ctx, snapshots.KindActive, key, parent, opts)
@@ -79,19 +97,26 @@ func (o *snapshotter) PrepareV2(ctx context.Context, key, parent string, opts ..
 			return nil, err
 		}
 	}
-	fmt.Printf("Overlayfs|PrepareV2,key:%s,parent:%s,label:%v", key, parent, base.Labels)
+	fmt.Printf("Overlayfs|PrepareV2,key:%s,parent:%s,label:%v\n", key, parent, base.Labels)
 	if target, ok := base.Labels[targetSnapshotLabel]; ok {
-		id, info, err := o.rs.Check(ctx, target)
-		fmt.Printf("Overlayfs|PrepareV2|ReadCache,target:%s,id:%s,info:%v,err:%v\n", target, id, info, err)
-		idInt, _ := strconv.ParseInt(id, 10, 64)
-		if idInt > 0 {
-			base.Labels[remoteSnapshotLabel] = id
-			opts = append(opts, snapshots.WithLabels(base.Labels))
-			err = o.doCommit(ctx, target, key, true, opts...)
-			if err != nil {
-				return nil, err
+		rs, err := GetRemoteSnapshot(base.Labels)
+		if rs != nil && err == nil {
+			defer rs.Close(ctx)
+			id, info, err := rs.Check(ctx, target)
+			fmt.Printf("Overlayfs|PrepareV2|ReadCache,target:%s,id:%s,info:%v,err:%v\n", target, id, info, err)
+			idInt, _ := strconv.ParseInt(id, 10, 64)
+			if idInt > 0 {
+				base.Labels[remoteSnapshotLabel] = id
+				opts = append(opts, snapshots.WithLabels(base.Labels))
+				err = o.doCommit(ctx, target, key, true, opts...)
+				if err != nil {
+					return nil, err
+				}
+				return nil, errdefs.ErrAlreadyExists
 			}
-			return nil, errdefs.ErrAlreadyExists
+
+		} else {
+			fmt.Printf("Overlayfs|PrepareV2|GetRemoteSnapshot,rs:%v,err:%v", rs, err)
 		}
 	}
 	//return o.mounts(s), nil

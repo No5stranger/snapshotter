@@ -70,7 +70,6 @@ func WithUpperdirLabel(config *SnapshotterConfig) error {
 type snapshotter struct {
 	root          string
 	ms            *storage.MetaStore
-	rs            *RemoteSnapshot //remote snapshot
 	asyncRemove   bool
 	upperdirLabel bool
 	indexOff      bool
@@ -102,10 +101,6 @@ func NewSnapshotter(root string, opts ...Opt) (snapshots.Snapshotter, error) {
 	if err != nil {
 		return nil, err
 	}
-	rs, err := NewRemoteSnapshot()
-	if err != nil {
-		return nil, err
-	}
 
 	if err := os.Mkdir(filepath.Join(root, "snapshots"), 0700); err != nil && !os.IsExist(err) {
 		return nil, err
@@ -119,7 +114,6 @@ func NewSnapshotter(root string, opts ...Opt) (snapshots.Snapshotter, error) {
 	return &snapshotter{
 		root:          root,
 		ms:            ms,
-		rs:            rs,
 		asyncRemove:   config.asyncRemove,
 		upperdirLabel: config.upperdirLabel,
 		indexOff:      supportsIndex(),
