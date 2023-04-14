@@ -20,6 +20,7 @@ const (
 	remoteSnapshotRoot  string = "/data/mnt/a-overlayfs"
 	targetSnapshotLabel        = "containerd.io/snapshot.ref"
 	remoteSnapshotLabel        = "containerd.io/snapshot/remote"
+	cacheSnapshotLabel         = "containerd.io/snapshot/image-cache"
 )
 
 type RemoteSnapshot struct {
@@ -78,6 +79,7 @@ func (o *snapshotter) PrepareV2(ctx context.Context, key, parent string, opts ..
 			return nil, err
 		}
 	}
+	fmt.Printf("Overlayfs|PrepareV2,key:%s,parent:%s,label:%v", key, parent, base.Labels)
 	if target, ok := base.Labels[targetSnapshotLabel]; ok {
 		id, info, err := o.rs.Check(ctx, target)
 		fmt.Printf("Overlayfs|PrepareV2|ReadCache,target:%s,id:%s,info:%v,err:%v\n", target, id, info, err)
