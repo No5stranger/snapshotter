@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	remoteSnapshotRoot  string = "/data/mnt/a-overlayfs"
+	remoteSnapshotRoot  string = "/data/mnt/"
 	targetSnapshotLabel        = "containerd.io/snapshot.ref"
 	remoteSnapshotLabel        = "containerd.io/snapshot/remote"
 	cacheSnapshotLabel         = "containerd.io/snapshot/image-cache"
