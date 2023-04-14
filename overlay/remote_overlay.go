@@ -223,7 +223,7 @@ func (o *snapshotter) doMounts(ctx context.Context, s storage.Snapshot, key stri
 		}, nil
 	}
 
-	fakeParentPaths := make([]string, 0, len(s.ParentIDs))
+	fakeParentPaths := make(map[string]string, len(s.ParentIDs))
 	if err := o.ms.WithTransaction(ctx, false, func(ctx context.Context) error {
 		for cKey := key; cKey != ""; {
 			id, info, _, err := storage.GetInfo(ctx, cKey)
@@ -233,7 +233,7 @@ func (o *snapshotter) doMounts(ctx context.Context, s storage.Snapshot, key stri
 			}
 			if targetID, ok := info.Labels[remoteSnapshotLabel]; ok {
 				if imc, ok := info.Labels[cacheSnapshotLabel]; ok {
-					fakeParentPaths = append(fakeParentPaths, o.fakeUpperPath(imc, targetID))
+					fakeParentPaths[id] = o.fakeUpperPath(imc, targetID)
 				} else {
 					fmt.Printf("Overlayfs|doMounts|MissIMC,id:%v,info:%v\n", id, info)
 				}
@@ -261,17 +261,6 @@ func (o *snapshotter) doMounts(ctx context.Context, s storage.Snapshot, key stri
 			fmt.Sprintf("workdir=%s", o.workPath(s.ID)),
 			fmt.Sprintf("upperdir=%s", o.upperPath(s.ID)),
 		)
-	} else if len(fakeParentPaths) == 1 {
-		return []mount.Mount{
-			{
-				Source: fakeParentPaths[0],
-				Type:   "bind",
-				Options: []string{
-					"ro",
-					"rbind",
-				},
-			},
-		}, nil
 	} else if len(s.ParentIDs) == 1 {
 		return []mount.Mount{
 			{
@@ -286,13 +275,10 @@ func (o *snapshotter) doMounts(ctx context.Context, s storage.Snapshot, key stri
 	}
 
 	parentPaths := make([]string, len(s.ParentIDs))
-	if len(fakeParentPaths) > 0 {
-		for i := range fakeParentPaths {
-			parentPaths[i] = fakeParentPaths[i]
-		}
-
-	} else {
-		for i := range s.ParentIDs {
+	for i := range s.ParentIDs {
+		if fp, ok := fakeParentPaths[s.ParentIDs[i]]; ok {
+			parentPaths[i] = fp
+		} else {
 			parentPaths[i] = o.upperPath(s.ParentIDs[i])
 		}
 	}
